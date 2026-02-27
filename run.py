@@ -28,10 +28,16 @@ def check_config():
     """检查配置文件"""
     try:
         import config
-        if not config.DEEPSEEK_API_KEY:
+        provider = getattr(config, 'LLM_PROVIDER', 'deepseek')
+        
+        if provider == 'deepseek' and not config.DEEPSEEK_API_KEY:
             print("⚠️  警告: DeepSeek API Key 未配置")
-            print("请在config.py中设置 DEEPSEEK_API_KEY")
+            print("请在config.py或.env中设置 DEEPSEEK_API_KEY")
             return False
+            
+        elif provider == 'ollama':
+            print(f"✅ 使用Ollama本地模型: {getattr(config, 'OLLAMA_MODEL', '未知')}")
+            
         print("✅ 配置文件检查通过")
         return True
     except ImportError:

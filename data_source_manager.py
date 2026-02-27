@@ -34,18 +34,19 @@ class DataSourceManager:
         else:
             print("ℹ️ 未配置Tushare Token，将仅使用Akshare数据源")
     
+    def _add_market_prefix(self, symbol):
+        """为股票代码添加市场前缀（sh/sz/bj）"""
+        if symbol.startswith('6'):
+            return f"sh{symbol}"
+        elif symbol.startswith('0') or symbol.startswith('3'):
+            return f"sz{symbol}"
+        elif symbol.startswith('8') or symbol.startswith('4'):
+            return f"bj{symbol}"
+        return symbol
+
     def get_stock_hist_data(self, symbol, start_date=None, end_date=None, adjust='qfq'):
         """
         获取股票历史数据（优先akshare，失败时使用tushare）
-        
-        Args:
-            symbol: 股票代码（6位数字）
-            start_date: 开始日期（格式：'20240101'或'2024-01-01'）
-            end_date: 结束日期
-            adjust: 复权类型（'qfq'前复权, 'hfq'后复权, ''不复权）
-            
-        Returns:
-            DataFrame: 包含日期、开盘、收盘、最高、最低、成交量等列
         """
         # 标准化日期格式
         if start_date:
@@ -60,32 +61,143 @@ class DataSourceManager:
             import akshare as ak
             print(f"[Akshare] 正在获取 {symbol} 的历史数据...")
             
-            df = ak.stock_zh_a_hist(
-                symbol=symbol,
-                period="daily",
-                start_date=start_date,
-                end_date=end_date,
-                adjust=adjust
-            )
+            # 尝试不同的接口，优先级：Tencent -> Sina -> EastMoney
             
-            if df is not None and not df.empty:
-                # 标准化列名
-                df = df.rename(columns={
-                    '日期': 'date',
-                    '开盘': 'open',
-                    '收盘': 'close',
-                    '最高': 'high',
-                    '最低': 'low',
-                    '成交量': 'volume',
-                    '成交额': 'amount',
-                    '振幅': 'amplitude',
-                    '涨跌幅': 'pct_change',
-                    '涨跌额': 'change',
-                    '换手率': 'turnover'
-                })
-                df['date'] = pd.to_datetime(df['date'])
-                print(f"[Akshare] ✅ 成功获取 {len(df)} 条数据")
-                return df
+            # 1. 尝试 stock_zh_a_daily (新浪财经)
+            try:
+                sina_symbol = self._add_market_prefix(symbol)
+                # 新浪接口不需要结束日期，只支持symbol
+                # 注意：新浪接口可能需要 adjusting
+                df = ak.stock_zh_a_daily(symbol=sina_symbol, start_date=start_date, end_date=end_date, adjust=adjust)
+                if df is not None and not df.empty:
+                     df = df.rename(columns={
+                        'date': 'Date',
+                        'open': 'Open',
+                        'close': 'Close',
+                        'high': 'High',
+                        'low': 'Low',
+                        'volume': 'Volume',
+                        'amount': 'Amount'
+                    })
+                     df['Date'] = pd.to_datetime(df['Date'])
+                     if 'Date' in df.columns:
+                        df.set_index('Date', inplace=True)
+                     
+                     # 检查是否有Volume列
+                     if 'Volume' in df.columns:
+                         print(f"[Akshare] ✅ 成功通过 stock_zh_a_daily (新浪) 获取 {len(df)} 条数据")
+                         return df
+                     else:
+                         print(f"[Akshare] stock_zh_a_daily (新浪) 返回数据缺少 Volume 列")
+            except Exception as e:
+                 print(f"[Akshare] stock_zh_a_daily (新浪) 接口失败: {e}")
+
+            # 2. 尝试 stock_zh_a_hist_tx (腾讯财经)
+            try:
+                tx_symbol = self._add_market_prefix(symbol)
+                # Tencent接口通常支持 YYYYMMDD 格式
+                df = ak.stock_zh_a_hist_tx(
+                    symbol=tx_symbol,
+                    start_date=start_date if start_date else "19900101",
+                    end_date=end_date,
+                    adjust=adjust
+                )
+                if df is not None and not df.empty:
+                    # 打印一下实际列名以便调试
+                    print(f"[Akshare] 腾讯接口返回列名: {df.columns.tolist()}")
+                    
+                    # 腾讯接口通常返回: date, open, close, high, low, amount
+                    # 注意：腾讯接口的 amount 其实是成交量(手)，需要乘以100转换为股
+                    # 腾讯接口没有成交额数据
+                    
+                    # 重命名列
+                    rename_dict = {
+                        'date': 'Date',
+                        'open': 'Open',
+                        'close': 'Close',
+                        'high': 'High',
+                        'low': 'Low',
+                    }
+                    
+                    # 特殊处理 amount -> Volume
+                    if 'amount' in df.columns:
+                        df['Volume'] = df['amount'] * 100
+                        # 移除原始 amount 列，因为它不是成交额
+                        # df = df.drop(columns=['amount'])
+                        # 或者保留但重命名为 Volume_Hand? 不，直接作为 Volume
+                    
+                    df = df.rename(columns=rename_dict)
+                    
+                    # 如果列名是中文，进行转换
+                    if '日期' in df.columns:
+                        df = df.rename(columns={
+                            '日期': 'Date',
+                            '开盘': 'Open',
+                            '收盘': 'Close',
+                            '最高': 'High',
+                            '最低': 'Low',
+                            '成交量': 'Volume',
+                            '成交额': 'Amount'
+                        })
+                    
+                    # 处理可能的小写列名
+                    if 'Volume' not in df.columns:
+                        if 'volume' in df.columns:
+                            df = df.rename(columns={'volume': 'Volume'})
+                        elif 'vol' in df.columns:
+                            df = df.rename(columns={'vol': 'Volume'})
+                            
+                    # 处理其他可能的小写列名
+                    for col in ['Open', 'Close', 'High', 'Low', 'Amount']:
+                        lower_col = col.lower()
+                        if col not in df.columns and lower_col in df.columns:
+                            df = df.rename(columns={lower_col: col})
+                    
+                    df['Date'] = pd.to_datetime(df['Date'])
+                    # 确保索引是日期
+                    if 'Date' in df.columns:
+                        df.set_index('Date', inplace=True)
+                        
+                    if 'Volume' in df.columns:
+                        print(f"[Akshare] ✅ 成功通过 stock_zh_a_hist_tx (腾讯) 获取 {len(df)} 条数据")
+                        return df
+                    else:
+                        print(f"[Akshare] stock_zh_a_hist_tx (腾讯) 转换后仍缺少 Volume 列")
+            except Exception as e:
+                print(f"[Akshare] stock_zh_a_hist_tx (腾讯) 接口失败: {e}")
+
+            # 3. 尝试 stock_zh_a_hist (东方财富)
+            try:
+                df = ak.stock_zh_a_hist(
+                    symbol=symbol,
+                    period="daily",
+                    start_date=start_date,
+                    end_date=end_date,
+                    adjust=adjust
+                )
+                if df is not None and not df.empty:
+                    # 标准化列名
+                    df = df.rename(columns={
+                        '日期': 'Date',
+                        '开盘': 'Open',
+                        '收盘': 'Close',
+                        '最高': 'High',
+                        '最低': 'Low',
+                        '成交量': 'Volume',
+                        '成交额': 'Amount',
+                        '振幅': 'amplitude',
+                        '涨跌幅': 'pct_change',
+                        '涨跌额': 'change',
+                        '换手率': 'turnover'
+                    })
+                    df['Date'] = pd.to_datetime(df['Date'])
+                    if 'Date' in df.columns:
+                        df.set_index('Date', inplace=True)
+                    print(f"[Akshare] ✅ 成功通过 stock_zh_a_hist (东财) 获取 {len(df)} 条数据")
+                    return df
+            except Exception as e:
+                print(f"[Akshare] stock_zh_a_hist (东财) 接口失败: {e}")
+
         except Exception as e:
             print(f"[Akshare] ❌ 获取失败: {e}")
         

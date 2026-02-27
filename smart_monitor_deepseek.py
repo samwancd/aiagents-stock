@@ -4,6 +4,7 @@
 """
 
 import logging
+import os
 from typing import Dict, List, Optional
 from datetime import datetime, time
 import pytz
@@ -20,13 +21,27 @@ class SmartMonitorDeepSeek:
         Args:
             api_key: DeepSeek API密钥
         """
-        self.api_key = api_key
-        self.base_url = config.DEEPSEEK_BASE_URL
+        self.logger = logging.getLogger(__name__)
+        self.provider = getattr(config, 'LLM_PROVIDER', 'deepseek')
+        
+        if self.provider == 'ollama':
+            self.api_key = "ollama"
+            self.base_url = getattr(config, 'OLLAMA_BASE_URL', "http://localhost:11434/v1")
+            
+            # Docker环境中自动处理localhost
+            if os.path.exists('/.dockerenv') and 'localhost' in self.base_url:
+                self.logger.warning(f"检测到Docker环境且使用localhost: {self.base_url}")
+                self.logger.warning("尝试自动替换为 host.docker.internal")
+                self.base_url = self.base_url.replace('localhost', 'host.docker.internal')
+                self.base_url = self.base_url.replace('127.0.0.1', 'host.docker.internal')
+        else:
+            self.api_key = api_key
+            self.base_url = config.DEEPSEEK_BASE_URL
+            
         self.headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
-        self.logger = logging.getLogger(__name__)
 
     def is_trading_time(self) -> bool:
         """
@@ -155,7 +170,9 @@ class SmartMonitorDeepSeek:
         """
         import requests
         
-        model = model or config.DEFAULT_MODEL_NAME
+        model = model or getattr(config, 'DEFAULT_MODEL_NAME', 'deepseek-chat')
+        if self.provider == 'ollama':
+             model = getattr(config, 'OLLAMA_MODEL', 'qwen2.5:latest')
         
         payload = {
             "model": model,

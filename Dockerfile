@@ -1,8 +1,9 @@
-# 使用官方Python镜像作为基础镜像
-FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.12-slim
+# 使用官方Python镜像作为基础镜像（降级到3.11以获得更好的兼容性）
+FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/python:3.11-slim
 
 # 设置时区环境变量
 ENV TZ=Asia/Shanghai
+ENV PYTHONUNBUFFERED=1
 
 # 替换apt-get源为国内源（阿里源）
 RUN echo "deb https://mirrors.aliyun.com/debian/ bookworm main" > /etc/apt/sources.list && \
@@ -24,6 +25,14 @@ RUN apt-get update && apt-get install -y \
     fonts-wqy-microhei \
     fontconfig \
     tzdata \
+    build-essential \
+    libssl-dev \
+    libffi-dev \
+    python3-dev \
+    libxml2-dev \
+    libxslt-dev \
+    gfortran \
+    libatlas-base-dev \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
     && fc-cache -fv \
@@ -50,10 +59,13 @@ RUN npm config set registry https://registry.npmmirror.com/
 # 复制依赖文件
 COPY requirements.txt .
 
-# 安装Python依赖（使用清华源，更稳定）
-RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/ && \
-    pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn && \
-    pip install --no-cache-dir --default-timeout=1000 -r requirements.txt
+# 升级pip并配置镜像源（改用阿里源，更稳定）
+RUN pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/ && \
+    pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
+    pip config set global.trusted-host mirrors.aliyun.com
+
+# 安装依赖（分开执行以便定位错误，增加详细日志）
+RUN pip install --no-cache-dir --default-timeout=1000 -r requirements.txt -v
 
 # 复制项目文件
 COPY . .

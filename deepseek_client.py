@@ -1,27 +1,58 @@
 import openai
 import json
+import logging
+import os
 from typing import Dict, List, Any, Optional
 import config
+
+logger = logging.getLogger(__name__)
 
 class DeepSeekClient:
     """DeepSeek API客户端"""
     
     def __init__(self, model=None):
-        self.model = model or config.DEFAULT_MODEL_NAME
-        self.client = openai.OpenAI(
-            api_key=config.DEEPSEEK_API_KEY,
-            base_url=config.DEEPSEEK_BASE_URL
-        )
+        self.provider = getattr(config, 'LLM_PROVIDER', 'deepseek')
+        
+        if self.provider == 'ollama':
+            # 强制使用配置中的Ollama模型，忽略传入的model参数（因为它可能是默认的deepseek-chat）
+            self.model = getattr(config, 'OLLAMA_MODEL', 'qwen2.5:latest')
+            base_url = getattr(config, 'OLLAMA_BASE_URL', "http://localhost:11434/v1")
+            
+            # Docker环境中自动处理localhost
+            if os.path.exists('/.dockerenv') and 'localhost' in base_url:
+                logger.warning(f"检测到Docker环境且使用localhost: {base_url}")
+                logger.warning("尝试自动替换为 host.docker.internal")
+                base_url = base_url.replace('localhost', 'host.docker.internal')
+                base_url = base_url.replace('127.0.0.1', 'host.docker.internal')
+                
+            self.client = openai.OpenAI(
+                api_key="ollama", # Ollama不需要API Key，但OpenAI客户端不能为空
+                base_url=base_url
+            )
+            logger.info(f"Ollama客户端初始化: URL={base_url}, Model={self.model}")
+        else:
+            self.model = model or config.DEFAULT_MODEL_NAME
+            self.client = openai.OpenAI(
+                api_key=config.DEEPSEEK_API_KEY,
+                base_url=config.DEEPSEEK_BASE_URL
+            )
         
     def call_api(self, messages: List[Dict[str, str]], model: Optional[str] = None, 
                  temperature: float = 0.7, max_tokens: int = 2000) -> str:
         """调用DeepSeek API"""
         # 使用实例的模型，如果没有传入则使用默认模型
-        model_to_use = model or self.model
+        if self.provider == 'ollama':
+            # 如果是Ollama，强制使用Ollama配置的模型，忽略传入的model参数
+            # 因为传入的model参数可能是deepseek-chat等默认值
+            model_to_use = self.model
+        else:
+            model_to_use = model or self.model
         
         # 对于 reasoner 模型，自动增加 max_tokens
         if "reasoner" in model_to_use.lower() and max_tokens <= 2000:
             max_tokens = 8000  # reasoner 模型需要更多 tokens 来输出推理过程
+        
+        logger.info(f"调用LLM API: Provider={self.provider}, Model={model_to_use}")
         
         try:
             response = self.client.chat.completions.create(
@@ -49,7 +80,15 @@ class DeepSeekClient:
             return result if result else "API返回空响应"
             
         except Exception as e:
-            return f"API调用失败: {str(e)}"
+            error_msg = str(e)
+            logger.error(f"API调用失败: {error_msg}")
+            
+            # 针对Connection error提供更友好的提示
+            if "Connection error" in error_msg:
+                if self.provider == 'ollama':
+                    return f"API调用失败: 连接Ollama服务失败。请检查：1. Ollama是否已启动 2. 若在Docker中运行，请将localhost改为host.docker.internal 3. 检查Ollama是否允许外部连接 (OLLAMA_HOST=0.0.0.0)。详细错误: {error_msg}"
+            
+            return f"API调用失败: {error_msg}"
     
     def technical_analysis(self, stock_info: Dict, stock_data: Any, indicators: Dict) -> str:
         """技术面分析"""

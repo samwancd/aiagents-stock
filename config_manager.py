@@ -14,10 +14,29 @@ class ConfigManager:
     def __init__(self, env_file: str = ".env"):
         self.env_file = Path(env_file)
         self.default_config = {
+            "LLM_PROVIDER": {
+                "value": "deepseek",
+                "description": "LLM服务提供商",
+                "required": False,
+                "type": "select",
+                "options": ["deepseek", "ollama"]
+            },
+            "OLLAMA_BASE_URL": {
+                "value": "http://localhost:11434/v1",
+                "description": "Ollama API地址",
+                "required": False,
+                "type": "text"
+            },
+            "OLLAMA_MODEL": {
+                "value": "qwen2.5:latest",
+                "description": "Ollama模型名称",
+                "required": False,
+                "type": "text"
+            },
             "DEEPSEEK_API_KEY": {
                 "value": "",
                 "description": "DeepSeek API密钥",
-                "required": True,
+                "required": False,
                 "type": "password"
             },
             "DEEPSEEK_BASE_URL": {
@@ -174,6 +193,13 @@ class ConfigManager:
             lines.append("# 由系统自动生成和管理")
             lines.append("")
             
+            # LLM API配置
+            lines.append("# ========== LLM API配置 ==========")
+            lines.append(f'LLM_PROVIDER="{config.get("LLM_PROVIDER", "deepseek")}"')
+            lines.append(f'OLLAMA_BASE_URL="{config.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")}"')
+            lines.append(f'OLLAMA_MODEL="{config.get("OLLAMA_MODEL", "qwen2.5:latest")}"')
+            lines.append("")
+            
             # DeepSeek配置
             lines.append("# ========== DeepSeek API配置 ==========")
             lines.append(f'DEEPSEEK_API_KEY="{config.get("DEEPSEEK_API_KEY", "")}"')
@@ -238,16 +264,32 @@ class ConfigManager:
     
     def validate_config(self, config: Dict[str, str]) -> tuple[bool, str]:
         """验证配置"""
-        # 检查必填项
-        for key, info in self.default_config.items():
-            if info["required"] and not config.get(key):
-                return False, f"必填项 {info['description']} 不能为空"
+        # 检查LLM Provider相关的必填项
+        provider = config.get("LLM_PROVIDER", "deepseek")
         
-        # 验证API Key格式（简单检查长度）
-        if config.get("DEEPSEEK_API_KEY"):
+        if provider == "deepseek":
+            if not config.get("DEEPSEEK_API_KEY"):
+                return False, "使用DeepSeek服务时，DeepSeek API Key不能为空"
+                
+            # 验证API Key格式（简单检查长度）
             api_key = config.get("DEEPSEEK_API_KEY", "")
             if len(api_key) < 20:
                 return False, "DeepSeek API Key格式不正确（长度太短）"
+        
+        elif provider == "ollama":
+            if not config.get("OLLAMA_BASE_URL"):
+                return False, "使用Ollama服务时，API地址不能为空"
+            if not config.get("OLLAMA_MODEL"):
+                return False, "使用Ollama服务时，模型名称不能为空"
+        
+        # 检查其他必填项
+        for key, info in self.default_config.items():
+            # 跳过根据Provider动态判断的项
+            if key in ["DEEPSEEK_API_KEY", "OLLAMA_BASE_URL", "OLLAMA_MODEL"]:
+                continue
+                
+            if info["required"] and not config.get(key):
+                return False, f"必填项 {info['description']} 不能为空"
         
         return True, "配置验证通过"
     

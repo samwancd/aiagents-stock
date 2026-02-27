@@ -766,7 +766,7 @@ def get_stock_data(symbol, period):
     stock_data = fetcher.get_stock_data(symbol, period)
 
     if isinstance(stock_data, dict) and "error" in stock_data:
-        return stock_info, None, None
+        return stock_info, {"error": stock_data["error"]}, None
 
     stock_data_with_indicators = fetcher.calculate_technical_indicators(stock_data)
     indicators = fetcher.get_latest_indicators(stock_data_with_indicators)
@@ -1114,6 +1114,9 @@ def run_stock_analysis(symbol, period):
 
         if stock_data is None:
             st.error("❌ 无法获取股票历史数据")
+            return
+        elif isinstance(stock_data, dict) and "error" in stock_data:
+            st.error(f"❌ {stock_data['error']}")
             return
 
         # 显示股票基本信息
@@ -2107,79 +2110,120 @@ def display_config_manager():
         st.session_state.temp_config = {key: info["value"] for key, info in config_info.items()}
 
     with tab1:
-        st.markdown("### DeepSeek API配置")
-        st.markdown("DeepSeek是系统的核心AI引擎，必须配置才能使用分析功能。")
-        st.markdown("DeepSeek:https://api.deepseek.com/v1")
-        st.markdown("硅基流动:https://api.siliconflow.cn/v1")
-        st.markdown("火山引擎:https://ark.cn-beijing.volces.com/api/v3")
-        st.markdown("阿里:https://dashscope.aliyuncs.com/compatible-mode/v1")
-
-    # DeepSeek API Key
-        api_key_info = config_info["DEEPSEEK_API_KEY"]
-        current_api_key = st.session_state.temp_config.get("DEEPSEEK_API_KEY", "")
-
-        new_api_key = st.text_input(
-            f"🔑 {api_key_info['description']} {'*' if api_key_info['required'] else ''}",
-            value=current_api_key,
-            type="password",
-            help="从 https://platform.deepseek.com 获取API密钥",
-            key="input_deepseek_api_key"
+        st.markdown("### AI模型配置")
+        st.markdown("选择使用的LLM服务提供商，支持DeepSeek API和本地Ollama等。")
+        
+        # LLM Provider选择
+        provider_info = config_info.get("LLM_PROVIDER", {"description": "LLM服务提供商", "value": "deepseek"})
+        current_provider = st.session_state.temp_config.get("LLM_PROVIDER", "deepseek")
+        
+        new_provider = st.selectbox(
+            "🧠 LLM服务提供商",
+            options=["deepseek", "ollama"],
+            index=0 if current_provider == "deepseek" else 1,
+            help="选择使用的AI服务提供商",
+            key="input_llm_provider"
         )
-        st.session_state.temp_config["DEEPSEEK_API_KEY"] = new_api_key
+        st.session_state.temp_config["LLM_PROVIDER"] = new_provider
+        
+        st.markdown("---")
+        
+        if new_provider == "deepseek":
+            st.markdown("#### DeepSeek API配置")
+            st.markdown("DeepSeek:https://api.deepseek.com/v1")
+            st.markdown("硅基流动:https://api.siliconflow.cn/v1")
+            
+            # DeepSeek API Key
+            api_key_info = config_info["DEEPSEEK_API_KEY"]
+            current_api_key = st.session_state.temp_config.get("DEEPSEEK_API_KEY", "")
 
-        # 显示当前状态
-        if new_api_key:
-            masked_key = new_api_key[:8] + "*" * (len(new_api_key) - 12) + new_api_key[-4:] if len(new_api_key) > 12 else "***"
-            st.success(f"✅ API密钥已设置: {masked_key}")
-        else:
-            st.warning("⚠️ 未设置API密钥，系统无法使用AI分析功能")
+            new_api_key = st.text_input(
+                f"🔑 {api_key_info['description']} {'*' if api_key_info['required'] else ''}",
+                value=current_api_key,
+                type="password",
+                help="从 https://platform.deepseek.com 获取API密钥",
+                key="input_deepseek_api_key"
+            )
+            st.session_state.temp_config["DEEPSEEK_API_KEY"] = new_api_key
+
+            # 显示当前状态
+            if new_api_key:
+                masked_key = new_api_key[:8] + "*" * (len(new_api_key) - 12) + new_api_key[-4:] if len(new_api_key) > 12 else "***"
+                st.success(f"✅ API密钥已设置: {masked_key}")
+            else:
+                st.warning("⚠️ 未设置API密钥，系统无法使用AI分析功能")
+            
+            # DeepSeek Base URL
+            base_url_info = config_info["DEEPSEEK_BASE_URL"]
+            current_base_url = st.session_state.temp_config.get("DEEPSEEK_BASE_URL", "")
+
+            new_base_url = st.text_input(
+                f"🌐 {base_url_info['description']}",
+                value=current_base_url,
+                help="一般无需修改，保持默认即可",
+                key="input_deepseek_base_url"
+            )
+            st.session_state.temp_config["DEEPSEEK_BASE_URL"] = new_base_url
+            
+            # AI模型名称
+            model_name_info = config_info["DEFAULT_MODEL_NAME"]
+            current_model_name = st.session_state.temp_config.get("DEFAULT_MODEL_NAME", "deepseek-chat")
+
+            new_model_name = st.text_input(
+                f"🤖 {model_name_info['description']}",
+                value=current_model_name,
+                help="输入OpenAI兼容的模型名称，修改后重启生效",
+                key="input_default_model_name"
+            )
+            st.session_state.temp_config["DEFAULT_MODEL_NAME"] = new_model_name
+            
+            st.info("💡 如何获取DeepSeek API密钥？\n\n1. 访问 https://platform.deepseek.com\n2. 注册/登录账号\n3. 进入API密钥管理页面\n4. 创建新的API密钥\n5. 复制密钥并粘贴到上方输入框")
+
+        elif new_provider == "ollama":
+            st.markdown("#### Ollama本地模型配置")
+            st.markdown("使用本地运行的Ollama模型，无需API Key，数据更安全。")
+            
+            # Ollama Base URL
+            ollama_url_info = config_info.get("OLLAMA_BASE_URL", {"description": "Ollama API地址", "value": "http://localhost:11434/v1"})
+            current_ollama_url = st.session_state.temp_config.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+            
+            new_ollama_url = st.text_input(
+                f"🌐 {ollama_url_info['description']}",
+                value=current_ollama_url,
+                help="Ollama服务的API地址，通常为 http://localhost:11434/v1",
+                key="input_ollama_base_url"
+            )
+            st.session_state.temp_config["OLLAMA_BASE_URL"] = new_ollama_url
+            
+            # Ollama Model
+            ollama_model_info = config_info.get("OLLAMA_MODEL", {"description": "Ollama模型名称", "value": "qwen2.5:latest"})
+            current_ollama_model = st.session_state.temp_config.get("OLLAMA_MODEL", "qwen2.5:latest")
+            
+            new_ollama_model = st.text_input(
+                f"🤖 {ollama_model_info['description']}",
+                value=current_ollama_model,
+                help="输入Ollama中已下载的模型名称，如 qwen2.5:latest, llama3:latest",
+                key="input_ollama_model"
+            )
+            st.session_state.temp_config["OLLAMA_MODEL"] = new_ollama_model
+            
+            st.success(f"✅ 当前配置: {new_ollama_model} @ {new_ollama_url}")
+            st.info("💡 提示：确保本地Ollama服务已启动，且已下载对应模型。\n命令：`ollama run qwen2.5`")
 
         st.markdown("---")
-
-        # DeepSeek Base URL
-        base_url_info = config_info["DEEPSEEK_BASE_URL"]
-        current_base_url = st.session_state.temp_config.get("DEEPSEEK_BASE_URL", "")
-
-        new_base_url = st.text_input(
-            f"🌐 {base_url_info['description']}",
-            value=current_base_url,
-            help="一般无需修改，保持默认即可",
-            key="input_deepseek_base_url"
-        )
-        st.session_state.temp_config["DEEPSEEK_BASE_URL"] = new_base_url
-
-        st.markdown("---")
-
-        # AI模型名称
-        model_name_info = config_info["DEFAULT_MODEL_NAME"]
-        current_model_name = st.session_state.temp_config.get("DEFAULT_MODEL_NAME", "deepseek-chat")
-
-        new_model_name = st.text_input(
-            f"🤖 {model_name_info['description']}",
-            value=current_model_name,
-            help="输入OpenAI兼容的模型名称，修改后重启生效",
-            key="input_default_model_name"
-        )
-        st.session_state.temp_config["DEFAULT_MODEL_NAME"] = new_model_name
-
-        if new_model_name:
-            st.success(f"✅ 当前模型: **{new_model_name}**")
+        
+        if new_provider == "deepseek":
+            if new_model_name:
+                st.success(f"✅ 当前生效模型: **{new_model_name}**")
         else:
-            st.warning("⚠️ 未设置模型名称，将使用默认值 deepseek-chat")
+            if new_ollama_model:
+                st.success(f"✅ 当前生效模型: **{new_ollama_model}**")
 
         st.markdown("""
         **常用模型名称参考：**
-        - `deepseek-chat` — DeepSeek Chat（默认）
-        - `deepseek-reasoner` — DeepSeek Reasoner（推理增强）
-        - `qwen-plus` — 通义千问 Plus
-        - `qwen-turbo` — 通义千问 Turbo
-        - `gpt-4o` — OpenAI GPT-4o
-        - `gpt-4o-mini` — OpenAI GPT-4o Mini
-        
-        > 💡 使用非 DeepSeek 模型时，请同时修改上方的 API地址 和 API密钥
+        - **DeepSeek**: `deepseek-chat`, `deepseek-reasoner`
+        - **Ollama**: `qwen2.5:latest`, `llama3:latest`, `mistral:latest`, `qwen2.5-coder:latest`
         """)
-
-        st.info("💡 如何获取DeepSeek API密钥？\n\n1. 访问 https://platform.deepseek.com\n2. 注册/登录账号\n3. 进入API密钥管理页面\n4. 创建新的API密钥\n5. 复制密钥并粘贴到上方输入框")
 
     with tab2:
         st.markdown("### Tushare数据接口（可选）")
@@ -2514,6 +2558,11 @@ def display_config_manager():
 
         st.code(f"""# AI股票分析系统环境配置
 # 由系统自动生成和管理
+
+# ========== LLM API配置 ==========
+LLM_PROVIDER="{current_config.get('LLM_PROVIDER', 'deepseek')}"
+OLLAMA_BASE_URL="{current_config.get('OLLAMA_BASE_URL', 'http://localhost:11434/v1')}"
+OLLAMA_MODEL="{current_config.get('OLLAMA_MODEL', 'qwen2.5:latest')}"
 
 # ========== DeepSeek API配置 ==========
 DEEPSEEK_API_KEY="{current_config.get('DEEPSEEK_API_KEY', '')}"

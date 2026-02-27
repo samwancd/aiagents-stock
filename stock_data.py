@@ -528,6 +528,24 @@ class StockDataFetcher:
             if isinstance(df, dict) and "error" in df:
                 return df
                 
+            # 确保列名存在（兼容不同的列名格式）
+            if 'Volume' not in df.columns and 'volume' in df.columns:
+                df = df.rename(columns={'volume': 'Volume'})
+            if 'Close' not in df.columns and 'close' in df.columns:
+                df = df.rename(columns={'close': 'Close'})
+            if 'High' not in df.columns and 'high' in df.columns:
+                df = df.rename(columns={'high': 'High'})
+            if 'Low' not in df.columns and 'low' in df.columns:
+                df = df.rename(columns={'low': 'Low'})
+            if 'Open' not in df.columns and 'open' in df.columns:
+                df = df.rename(columns={'open': 'Open'})
+
+            # 检查必要的列是否存在
+            required_columns = ['Close', 'High', 'Low', 'Volume']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                return {"error": f"缺少必要的列: {', '.join(missing_columns)}"}
+
             # 移动平均线
             df['MA5'] = ta.trend.sma_indicator(df['Close'], window=5)
             df['MA10'] = ta.trend.sma_indicator(df['Close'], window=10)
@@ -555,7 +573,8 @@ class StockDataFetcher:
             
             # 成交量指标
             df['Volume_MA5'] = ta.trend.sma_indicator(df['Volume'], window=5)
-            df['Volume_ratio'] = df['Volume'] / df['Volume_MA5']
+            # 处理除以零的情况
+            df['Volume_ratio'] = df['Volume'] / df['Volume_MA5'].replace(0, np.nan)
             
             return df
             
