@@ -57,6 +57,24 @@ class PortfolioManager:
             if existing:
                 return False, f"股票代码 {code} 已存在", None
             
+            # 如果没有提供名称，尝试自动获取
+            if not name:
+                try:
+                    # 尝试从数据源获取名称
+                    from data_source_manager import data_source_manager
+                    print(f"正在尝试自动获取股票 {code} 的名称...")
+                    info = data_source_manager.get_stock_basic_info(code)
+                    if info and info.get('name') and info.get('name') != '未知':
+                        name = info.get('name')
+                        print(f"已获取股票名称: {name}")
+                    else:
+                        # 如果获取失败，要求用户手动输入
+                        print(f"未能获取股票名称")
+                        return False, "无法自动获取股票名称，请手动输入股票名称", None
+                except Exception as e:
+                    print(f"自动获取股票名称异常: {e}")
+                    return False, f"自动获取股票名称异常: {e}，请手动输入股票名称", None
+            
             # 添加到数据库
             stock_id = self.db.add_stock(code, name, cost_price, quantity, note, auto_monitor)
             return True, f"添加持仓股票成功: {code} {name}", stock_id

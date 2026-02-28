@@ -216,19 +216,34 @@ def display_add_stock_form():
                 st.error("请输入股票代码")
             else:
                 try:
-                    portfolio_manager.add_stock(
-                        code=code.strip().upper(),
+                    # 自动补全后缀逻辑
+                    input_code = code.strip().upper()
+                    final_code = input_code
+                    if '.' not in input_code:
+                        if input_code.startswith('6'):
+                            final_code = f"{input_code}.SH"
+                        elif input_code.startswith('0') or input_code.startswith('3'):
+                            final_code = f"{input_code}.SZ"
+                        elif input_code.startswith('8') or input_code.startswith('4'):
+                            final_code = f"{input_code}.BJ"
+                    
+                    success, msg, _ = portfolio_manager.add_stock(
+                        code=final_code,
                         name=name.strip() if name else None,
                         cost_price=cost_price if cost_price > 0 else None,
                         quantity=quantity if quantity > 0 else None,
                         note=note.strip() if note else None,
                         auto_monitor=auto_monitor
                     )
-                    st.success(f"✅ 已添加 {code} 到持仓列表")
-                    time.sleep(0.5)
-                    st.rerun()
+                    
+                    if success:
+                        st.success(f"✅ {msg}")
+                        time.sleep(0.5)
+                        st.rerun()
+                    else:
+                        st.error(msg)
                 except Exception as e:
-                    st.error(f"添加失败: {str(e)}")
+                    st.error(f"添加异常: {str(e)}")
 
 
 def display_batch_analysis():

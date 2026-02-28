@@ -271,25 +271,26 @@ class DataSourceManager:
             import akshare as ak
             print(f"[Akshare] 正在获取 {symbol} 的基本信息...")
             
-            stock_info = ak.stock_individual_info_em(symbol=symbol)
-            if stock_info is not None and not stock_info.empty:
-                for _, row in stock_info.iterrows():
-                    key = row['item']
-                    value = row['value']
+            # 方法1: 尝试 stock_info_a_code_name (所有A股代码和名称)
+            try:
+                print(f"[Akshare] 尝试通过代码名称列表接口获取...")
+                df = ak.stock_info_a_code_name()
+                if df is not None and not df.empty:
+                    # 去除后缀（如.SZ, .SH）
+                    clean_symbol = symbol.split('.')[0]
                     
-                    if key == '股票简称':
-                        info['name'] = value
-                    elif key == '所处行业':
-                        info['industry'] = value
-                    elif key == '上市时间':
-                        info['list_date'] = value
-                    elif key == '总市值':
-                        info['market_cap'] = value
-                    elif key == '流通市值':
-                        info['circulating_market_cap'] = value
+                    # 查找对应股票
+                    match = df[df['code'] == clean_symbol]
+                    if not match.empty:
+                        row = match.iloc[0]
+                        info['name'] = row['name']
+                        print(f"[Akshare] ✅ 成功通过 stock_info_a_code_name 获取股票名称: {info['name']}")
+                        return info
+                    else:
+                        print(f"[Akshare] 在代码名称列表中未找到 {clean_symbol}")
+            except Exception as e:
+                print(f"[Akshare] stock_info_a_code_name 接口失败: {e}")
                 
-                print(f"[Akshare] ✅ 成功获取基本信息")
-                return info
         except Exception as e:
             print(f"[Akshare] ❌ 获取失败: {e}")
         
