@@ -968,126 +968,184 @@ def display_history_tab():
                 # 尝试解析完整分析内容
                 analysis_content_parsed = report_detail.get('analysis_content_parsed')
                 
+                # 调试信息
+                # st.write(f"解析后的内容类型: {type(analysis_content_parsed)}")
+                # if analysis_content_parsed:
+                #    st.write(f"包含的键: {list(analysis_content_parsed.keys())}")
+                
                 if analysis_content_parsed and isinstance(analysis_content_parsed, dict):
-                    # 显示AI分析师团队报告
-                    agents_analysis = analysis_content_parsed.get('agents_analysis', {})
+                    # 重构历史报告显示结构，使用与分析页相同的Tab结构
+                    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+                        "🏆 AI评分排名",
+                        "🎯 推荐股票",
+                        "🤖 AI分析师报告",
+                        "📊 数据概况",
+                        "📈 可视化图表"
+                    ])
                     
-                    if agents_analysis:
-                        st.markdown("#### 🤖 AI分析师团队报告")
-                        
-                        agent_info = {
-                            'youzi': {'title': '🎯 游资行为分析师', 'icon': '🎯'},
-                            'stock': {'title': '📈 个股潜力分析师', 'icon': '📈'},
-                            'theme': {'title': '🔥 题材追踪分析师', 'icon': '🔥'},
-                            'risk': {'title': '⚠️ 风险控制专家', 'icon': '⚠️'},
-                            'chief': {'title': '👔 首席策略师', 'icon': '👔'}
-                        }
-                        
-                        for agent_key, info in agent_info.items():
-                            agent_data = agents_analysis.get(agent_key, {})
-                            if agent_data:
-                                with st.expander(f"{info['icon']} {info['title']}", expanded=False):
-                                    analysis = agent_data.get('analysis', '暂无分析')
-                                    st.markdown(analysis)
-                                    st.caption(f"分析时间: {agent_data.get('timestamp', 'N/A')}")
-                    
-                    # 显示AI评分排名
-                    scoring_ranking = analysis_content_parsed.get('scoring_ranking', [])
-                    if scoring_ranking:
-                        st.markdown("---")
-                        st.markdown("#### 🏆 AI智能评分排名 (TOP10)")
-                        
-                        df_scoring = pd.DataFrame(scoring_ranking[:10])
-                        # 类型统一，避免Arrow序列化错误
-                        numeric_cols = ['排名','综合评分','资金含金量','净买入额','卖出压力','机构共振','加分项','顶级游资','买方数','净流入']
-                        for col in numeric_cols:
-                            if col in df_scoring.columns:
-                                df_scoring[col] = pd.to_numeric(df_scoring[col], errors='coerce')
-                        text_cols = ['股票名称','股票代码','机构参与']
-                        for col in text_cols:
-                            if col in df_scoring.columns:
-                                df_scoring[col] = df_scoring[col].astype(str)
-                        if '排名' in df_scoring.columns:
-                            df_scoring['排名'] = pd.to_numeric(df_scoring['排名'], errors='coerce').fillna(0).astype(int)
-                        
-                        # 显示完整的评分表格
-                        st.dataframe(
-                            df_scoring,
-                            column_config={
-                                "排名": st.column_config.NumberColumn("排名", format="%d"),
-                                "股票名称": st.column_config.TextColumn("股票名称", width="medium"),
-                                "股票代码": st.column_config.TextColumn("代码", width="small"),
-                                "综合评分": st.column_config.NumberColumn(
-                                    "综合评分",
-                                    format="%.1f",
-                                    help="总分100分"
-                                ),
-                                "资金含金量": st.column_config.ProgressColumn(
-                                    "资金含金量",
-                                    format="%d分",
-                                    min_value=0,
-                                    max_value=30
-                                ),
-                                "净买入额": st.column_config.ProgressColumn(
-                                    "净买入额",
-                                    format="%d分",
-                                    min_value=0,
-                                    max_value=25
-                                ),
-                                "卖出压力": st.column_config.ProgressColumn(
-                                    "卖出压力",
-                                    format="%d分",
-                                    min_value=0,
-                                    max_value=20
-                                ),
-                                "机构共振": st.column_config.ProgressColumn(
-                                    "机构共振",
-                                    format="%d分",
-                                    min_value=0,
-                                    max_value=15
-                                ),
-                                "加分项": st.column_config.ProgressColumn(
-                                    "加分项",
-                                    format="%d分",
-                                    min_value=0,
-                                    max_value=10
-                                ),
-                                "顶级游资": st.column_config.NumberColumn("顶级游资", format="%d家"),
-                                "买方数": st.column_config.NumberColumn("买方数", format="%d家"),
-                                "机构参与": st.column_config.TextColumn("机构参与"),
-                                "净流入": st.column_config.NumberColumn("净流入(元)", format="%.2f")
-                            },
-                            hide_index=True,
-                            width='stretch'
-                        )
-                        
-                        # 显示评分说明
-                        with st.expander("📖 评分维度说明", expanded=False):
-                            st.markdown("""
-                            **AI智能评分体系 (总分100分)**
+                    # Tab 1: AI评分排名
+                    with tab1:
+                        scoring_ranking = analysis_content_parsed.get('scoring_ranking', [])
+                        if scoring_ranking:
+                            st.subheader("🏆 AI智能评分排名 (TOP10)")
                             
-                            - **资金含金量** (0-30分)：顶级游资+10分，知名游资+5分，普通游资+1.5分
-                            - **净买入额** (0-25分)：根据净流入金额大小评分
-                            - **卖出压力** (0-20分)：卖出比例越低得分越高
-                            - **机构共振** (0-15分)：机构+游资共振15分最高
-                            - **加分项** (0-10分)：主力集中度、热门概念、连续上榜等
+                            try:
+                                df_scoring = pd.DataFrame(scoring_ranking[:10])
+                                
+                                # 确保必要的列存在
+                                if not df_scoring.empty:
+                                    # 类型统一，避免Arrow序列化错误
+                                    numeric_cols = ['排名','综合评分','资金含金量','净买入额','卖出压力','机构共振','加分项','顶级游资','买方数','净流入']
+                                    for col in numeric_cols:
+                                        if col in df_scoring.columns:
+                                            df_scoring[col] = pd.to_numeric(df_scoring[col], errors='coerce').fillna(0)
+                                            
+                                    text_cols = ['股票名称','股票代码','机构参与']
+                                    for col in text_cols:
+                                        if col in df_scoring.columns:
+                                            df_scoring[col] = df_scoring[col].astype(str)
+                                            
+                                    if '排名' in df_scoring.columns:
+                                        df_scoring['排名'] = df_scoring['排名'].astype(int)
+                                    
+                                    # 显示完整的评分表格
+                                    st.dataframe(
+                                        df_scoring,
+                                        column_config={
+                                            "排名": st.column_config.NumberColumn("排名", format="%d"),
+                                            "股票名称": st.column_config.TextColumn("股票名称", width="medium"),
+                                            "股票代码": st.column_config.TextColumn("代码", width="small"),
+                                            "综合评分": st.column_config.NumberColumn(
+                                                "综合评分",
+                                                format="%.1f",
+                                                help="总分100分"
+                                            ),
+                                            "资金含金量": st.column_config.ProgressColumn(
+                                                "资金含金量",
+                                                format="%d分",
+                                                min_value=0,
+                                                max_value=30
+                                            ),
+                                            "净买入额": st.column_config.ProgressColumn(
+                                                "净买入额",
+                                                format="%d分",
+                                                min_value=0,
+                                                max_value=25
+                                            ),
+                                            "卖出压力": st.column_config.ProgressColumn(
+                                                "卖出压力",
+                                                format="%d分",
+                                                min_value=0,
+                                                max_value=20
+                                            ),
+                                            "机构共振": st.column_config.ProgressColumn(
+                                                "机构共振",
+                                                format="%d分",
+                                                min_value=0,
+                                                max_value=15
+                                            ),
+                                            "加分项": st.column_config.ProgressColumn(
+                                                "加分项",
+                                                format="%d分",
+                                                min_value=0,
+                                                max_value=10
+                                            ),
+                                            "顶级游资": st.column_config.NumberColumn("顶级游资", format="%d家"),
+                                            "买方数": st.column_config.NumberColumn("买方数", format="%d家"),
+                                            "机构参与": st.column_config.TextColumn("机构参与"),
+                                            "净流入": st.column_config.NumberColumn("净流入(元)", format="%.2f")
+                                        },
+                                        hide_index=True,
+                                        width='stretch'
+                                    )
+                                    
+                                    # 显示评分说明
+                                    with st.expander("📖 评分维度说明", expanded=False):
+                                        st.markdown("""
+                                        **AI智能评分体系 (总分100分)**
+                                        
+                                        - **资金含金量** (0-30分)：顶级游资+10分，知名游资+5分，普通游资+1.5分
+                                        - **净买入额** (0-25分)：根据净流入金额大小评分
+                                        - **卖出压力** (0-20分)：卖出比例越低得分越高
+                                        - **机构共振** (0-15分)：机构+游资共振15分最高
+                                        - **加分项** (0-10分)：主力集中度、热门概念、连续上榜等
+                                        
+                                        💡 评分越高，表示该股票受到资金青睐程度越高！
+                                        """)
+                                else:
+                                    st.info("评分数据为空")
+                            except Exception as e:
+                                st.error(f"显示评分排名时出错: {e}")
+                        else:
+                            st.info("暂无评分数据")
+
+                    # Tab 2: 推荐股票
+                    with tab2:
+                        recommended_stocks = report_detail.get('recommended_stocks', [])
+                        if recommended_stocks:
+                            st.subheader(f"🎯 推荐股票 ({len(recommended_stocks)}只)")
                             
-                            💡 评分越高，表示该股票受到资金青睐程度越高！
-                            """)
-                    
-                    # 显示数据概况
-                    data_info = analysis_content_parsed.get('data_info', {})
-                    if data_info:
-                        st.markdown("---")
-                        st.markdown("#### 📊 数据概况")
-                        
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("龙虎榜记录", f"{data_info.get('total_records', 0)} 条")
-                        with col2:
-                            st.metric("涉及股票", f"{data_info.get('total_stocks', 0)} 只")
-                        with col3:
-                            st.metric("涉及游资", f"{data_info.get('total_youzi', 0)} 个")
+                            df_stocks = pd.DataFrame(recommended_stocks)
+                            st.dataframe(
+                                df_stocks,
+                                column_config={
+                                    "rank": st.column_config.NumberColumn("排名", format="%d"),
+                                    "code": st.column_config.TextColumn("代码"),
+                                    "name": st.column_config.TextColumn("名称"),
+                                    "net_inflow": st.column_config.NumberColumn("净流入", format="%.2f"),
+                                    "reason": st.column_config.TextColumn("推荐理由"),
+                                    "confidence": st.column_config.TextColumn("确定性"),
+                                    "hold_period": st.column_config.TextColumn("持有周期")
+                                },
+                                hide_index=True,
+                                width='stretch'
+                            )
+                        else:
+                            st.info("本次分析无推荐股票")
+
+                    # Tab 3: AI分析师报告
+                    with tab3:
+                        agents_analysis = analysis_content_parsed.get('agents_analysis', {})
+                        if agents_analysis:
+                            st.subheader("🤖 AI分析师团队报告")
+                            
+                            agent_info = {
+                                'youzi': {'title': '🎯 游资行为分析师', 'icon': '🎯'},
+                                'stock': {'title': '📈 个股潜力分析师', 'icon': '📈'},
+                                'theme': {'title': '🔥 题材追踪分析师', 'icon': '🔥'},
+                                'risk': {'title': '⚠️ 风险控制专家', 'icon': '⚠️'},
+                                'chief': {'title': '👔 首席策略师', 'icon': '👔'}
+                            }
+                            
+                            for agent_key, info in agent_info.items():
+                                agent_data = agents_analysis.get(agent_key, {})
+                                if agent_data:
+                                    with st.expander(f"{info['icon']} {info['title']}", expanded=False):
+                                        analysis = agent_data.get('analysis', '暂无分析')
+                                        st.markdown(analysis)
+                                        st.caption(f"分析时间: {agent_data.get('timestamp', 'N/A')}")
+                        else:
+                            st.info("暂无AI分析报告")
+
+                    # Tab 4: 数据概况
+                    with tab4:
+                        data_info = analysis_content_parsed.get('data_info', {})
+                        if data_info:
+                            st.subheader("📊 数据概况")
+                            
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("龙虎榜记录", f"{data_info.get('total_records', 0)} 条")
+                            with col2:
+                                st.metric("涉及股票", f"{data_info.get('total_stocks', 0)} 只")
+                            with col3:
+                                st.metric("涉及游资", f"{data_info.get('total_youzi', 0)} 个")
+                        else:
+                            st.info("暂无数据概况")
+                            
+                    # Tab 5: 可视化图表
+                    with tab5:
+                        display_visualizations_from_data(analysis_content_parsed)
                 
                 else:
                     # 如果无法解析，显示原始内容
@@ -1181,6 +1239,101 @@ def display_history_tab():
         st.error(f"❌ 加载历史报告失败: {str(e)}")
         import traceback
         st.code(traceback.format_exc())
+
+
+def display_visualizations_from_data(analysis_content):
+    """从保存的数据中显示可视化图表"""
+    
+    st.subheader("📈 可视化图表")
+    
+    # 尝试从analysis_content中恢复数据结构
+    # 注意：历史数据中可能不包含原始的DataFrame，而是summary统计信息
+    # 这里我们主要基于评分数据和推荐股票数据进行可视化
+    
+    scoring_ranking = analysis_content.get('scoring_ranking', [])
+    recommended_stocks = analysis_content.get('final_report', {}).get('recommended_stocks', [])
+    
+    if not scoring_ranking:
+        st.warning("暂无足够数据生成图表")
+        return
+        
+    try:
+        df_scoring = pd.DataFrame(scoring_ranking)
+        
+        # 确保必要的数值列存在
+        numeric_cols = ['综合评分', '资金含金量', '净买入额', '卖出压力', '机构共振', '净流入']
+        for col in numeric_cols:
+            if col in df_scoring.columns:
+                df_scoring[col] = pd.to_numeric(df_scoring[col], errors='coerce').fillna(0)
+        
+        # 1. 评分分布图
+        st.markdown("### 📊 AI评分分布 (TOP 20)")
+        
+        # 取前20名
+        top_20 = df_scoring.head(20).copy()
+        if not top_20.empty:
+            fig = px.bar(
+                top_20,
+                x='股票名称',
+                y='综合评分',
+                color='综合评分',
+                title='Top 20 股票AI综合评分',
+                labels={'综合评分': 'AI评分', '股票名称': '股票'},
+                color_continuous_scale='Viridis'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+        # 2. 资金流向气泡图
+        st.markdown("### 💰 资金流向与评分关系")
+        if not top_20.empty and '净流入' in top_20.columns and '资金含金量' in top_20.columns:
+            # 净流入转为万元
+            top_20['净流入(万元)'] = top_20['净流入'] / 10000
+            
+            fig = px.scatter(
+                top_20,
+                x='资金含金量',
+                y='综合评分',
+                size='净流入(万元)',
+                color='净流入(万元)',
+                hover_name='股票名称',
+                title='资金含金量 vs 综合评分 (气泡大小=净流入)',
+                labels={'资金含金量': '资金含金量评分', '综合评分': 'AI综合评分'},
+                color_continuous_scale='RdBu_r'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+        # 3. 评分维度雷达图 (Top 5)
+        st.markdown("### 🕸️ Top 5 股票评分维度对比")
+        top_5 = df_scoring.head(5).copy()
+        
+        if not top_5.empty:
+            dimensions = ['资金含金量', '净买入额', '卖出压力', '机构共振', '加分项']
+            # 检查维度列是否存在
+            valid_dims = [d for d in dimensions if d in top_5.columns]
+            
+            if valid_dims:
+                fig = go.Figure()
+                
+                for idx, row in top_5.iterrows():
+                    fig.add_trace(go.Scatterpolar(
+                        r=[row[d] for d in valid_dims],
+                        theta=valid_dims,
+                        fill='toself',
+                        name=row['股票名称']
+                    ))
+                
+                fig.update_layout(
+                    polar=dict(
+                        radialaxis=dict(
+                            visible=True,
+                            range=[0, 30]
+                        )),
+                    showlegend=True
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+    except Exception as e:
+        st.error(f"生成图表时出错: {str(e)}")
 
 
 def display_statistics_tab():

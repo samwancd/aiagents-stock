@@ -17,7 +17,7 @@ import config
 class LonghubangEngine:
     """龙虎榜综合分析引擎"""
     
-    def __init__(self, model=None, db_path='longhubang.db'):
+    def __init__(self, model=None, db_path='data/longhubang.db'):
         """
         初始化分析引擎
         

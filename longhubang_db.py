@@ -8,6 +8,7 @@ from datetime import datetime
 import json
 import pandas as pd
 import logging
+import os
 
 
 class LonghubangDatabase:
