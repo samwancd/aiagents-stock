@@ -10,6 +10,7 @@ from main_force_analysis import MainForceAnalyzer
 from main_force_pdf_generator import display_report_download_section
 from main_force_history_ui import display_batch_history
 import pandas as pd
+from main_force_db import save_analysis, get_history_list, get_analysis_result, delete_analysis_record
 
 def display_main_force_selector():
     """显示主力选股界面"""
@@ -19,7 +20,7 @@ def display_main_force_selector():
         run_main_force_batch_analysis()
         return
 
-    # 检查是否查看历史记录
+    # 检查是否查看历史记录（原来的批量分析历史）
     if st.session_state.get('main_force_view_history'):
         display_batch_history()
         return
@@ -30,9 +31,50 @@ def display_main_force_selector():
         st.markdown("## 🎯 主力选股 - 智能筛选优质标的")
     with col_history:
         st.write("")  # 占位
-        if st.button("📚 批量分析历史", width='content'):
-            st.session_state.main_force_view_history = True
-            st.rerun()
+        # if st.button("📚 批量分析历史", width='content'):
+        #     st.session_state.main_force_view_history = True
+        #     st.rerun()
+
+    st.markdown("---")
+
+    # 显示主力选股历史记录（新功能）
+    with st.expander("📚 主力选股历史记录", expanded=False):
+        history_list = get_history_list()
+        if not history_list:
+            st.info("暂无历史记录")
+        else:
+            for record in history_list:
+                col_rec1, col_rec2, col_rec3 = st.columns([3, 1, 1])
+                with col_rec1:
+                    st.write(f"📅 {record['timestamp']}")
+                    # st.caption(f"参数: {record['params']}")
+                with col_rec2:
+                    if st.button("查看", key=f"view_{record['id']}"):
+                        result, analyzer_data, _, _ = get_analysis_result(record['id'])
+                        if result:
+                            st.session_state.main_force_result = result
+                            
+                            # 重建analyzer对象用于显示
+                            analyzer = MainForceAnalyzer()
+                            # 恢复analyzer数据
+                            if analyzer_data:
+                                analyzer.fund_flow_analysis = analyzer_data.get('fund_flow_analysis', '')
+                                analyzer.industry_analysis = analyzer_data.get('industry_analysis', '')
+                                analyzer.fundamental_analysis = analyzer_data.get('fundamental_analysis', '')
+                                if analyzer_data.get('raw_stocks') is not None:
+                                    analyzer.raw_stocks = analyzer_data['raw_stocks']
+                            
+                            st.session_state.main_force_analyzer = analyzer
+                            st.rerun()
+                        else:
+                            st.error("加载记录失败")
+                with col_rec3:
+                    if st.button("删除", key=f"del_{record['id']}"):
+                        if delete_analysis_record(record['id']):
+                            st.success("删除成功")
+                            st.rerun()
+                        else:
+                            st.error("删除失败")
 
     st.markdown("---")
 
@@ -150,6 +192,18 @@ def display_main_force_selector():
             # 保存结果到session_state
             st.session_state.main_force_result = result
             st.session_state.main_force_analyzer = analyzer
+            
+            # 保存到数据库
+            if result['success']:
+                params = {
+                    'start_date': start_date,
+                    'days_ago': days_ago,
+                    'final_n': final_n,
+                    'max_range_change': max_change,
+                    'min_market_cap': min_cap,
+                    'max_market_cap': max_cap
+                }
+                save_analysis(result, analyzer, params)
 
         # 显示结果
         if result['success']:
