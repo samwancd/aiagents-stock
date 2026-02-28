@@ -11,6 +11,7 @@ from typing import List, Dict
 from profit_growth_selector import profit_growth_selector
 from notification_service import notification_service
 from profit_growth_monitor import profit_growth_monitor
+from profit_growth_db import save_analysis, get_history_list, get_analysis_result, delete_analysis_record
 
 
 def display_profit_growth():
@@ -37,6 +38,37 @@ def display_profit_growth():
         if st.button("📊 策略监控", type="primary", use_container_width=True):
             st.session_state.show_profit_growth_monitor = True
             st.rerun()
+    
+    st.markdown("---")
+    
+    # 显示净利增长策略历史记录（新功能）
+    with st.expander("📚 净利增长策略历史记录", expanded=False):
+        history_list = get_history_list()
+        if not history_list:
+            st.info("暂无历史记录")
+        else:
+            for record in history_list:
+                col_rec1, col_rec2, col_rec3 = st.columns([3, 1, 1])
+                with col_rec1:
+                    st.write(f"📅 {record['timestamp']}")
+                    if 'result' in record and 'total_stocks' in record['result']:
+                         st.caption(f"筛选数量: {record['result']['total_stocks']} 只")
+                with col_rec2:
+                    if st.button("查看", key=f"view_growth_{record['id']}"):
+                        stocks_df, timestamp, _ = get_analysis_result(record['id'])
+                        if stocks_df is not None:
+                            st.session_state.profit_growth_stocks = stocks_df
+                            st.session_state.profit_growth_time = timestamp
+                            st.rerun()
+                        else:
+                            st.error("加载记录失败")
+                with col_rec3:
+                    if st.button("删除", key=f"del_growth_{record['id']}"):
+                        if delete_analysis_record(record['id']):
+                            st.success("删除成功")
+                            st.rerun()
+                        else:
+                            st.error("删除失败")
     
     st.markdown("---")
     
@@ -100,6 +132,9 @@ def display_profit_growth():
             # 保存到session_state
             st.session_state.profit_growth_stocks = stocks_df
             st.session_state.profit_growth_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # 保存到数据库
+            save_analysis(stocks_df, top_n)
     
     # 显示选股结果
     if 'profit_growth_stocks' in st.session_state and st.session_state.profit_growth_stocks is not None:
