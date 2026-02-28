@@ -851,6 +851,15 @@ def analyze_single_stock_for_batch(symbol, period, enabled_analysts_config=None,
         if stock_data is None:
             return {"symbol": symbol, "error": "无法获取股票历史数据", "success": False}
 
+        if isinstance(stock_data, dict) and "error" in stock_data:
+            return {"symbol": symbol, "error": stock_data["error"], "success": False}
+            
+        if indicators is None:
+            return {"symbol": symbol, "error": "无法计算技术指标", "success": False}
+            
+        if isinstance(indicators, dict) and "error" in indicators:
+            return {"symbol": symbol, "error": indicators["error"], "success": False}
+
         # 2. 获取财务数据
         fetcher = StockDataFetcher()
         financial_data = fetcher.get_financial_data(symbol)

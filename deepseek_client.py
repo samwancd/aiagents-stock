@@ -429,24 +429,18 @@ class DeepSeekClient:
         
         return self.call_api(messages, max_tokens=6000)
     
-    def final_decision(self, comprehensive_discussion: str, stock_info: Dict, 
-                      indicators: Dict) -> Dict[str, Any]:
+    def final_decision(self, discussion_result: str, stock_info: Dict, indicators: Dict) -> Dict[str, Any]:
         """最终投资决策"""
         prompt = f"""
-基于前期的综合分析讨论，现在需要做出最终的投资决策。
+你是一名专业的投资决策专家，请根据以下分析团队的讨论结果，制定最终的投资决策。
 
 股票信息：
 - 股票代码：{stock_info.get('symbol', 'N/A')}
 - 股票名称：{stock_info.get('name', 'N/A')}
 - 当前价格：{stock_info.get('current_price', 'N/A')}
 
-综合分析讨论结果：
-{comprehensive_discussion}
-
-当前关键技术位：
-- MA20：{indicators.get('ma20', 'N/A')}
-- 布林带上轨：{indicators.get('bb_upper', 'N/A')}
-- 布林带下轨：{indicators.get('bb_lower', 'N/A')}
+分析团队讨论结果：
+{discussion_result}
 
 请给出最终投资决策，必须包含以下内容：
 
@@ -459,8 +453,9 @@ class DeepSeekClient:
 7. 持有周期建议
 8. 风险提示
 9. 仓位建议（轻仓/中等仓位/重仓）
+10. 信心度（1-10分）
 
-请以JSON格式输出决策结果，格式如下：
+请务必以严格的JSON格式输出决策结果，不要包含任何Markdown代码块标记（如```json），也不要包含任何额外的文字说明。格式如下：
 {{
     "rating": "买入/持有/卖出",
     "target_price": "目标价位数字",
@@ -476,21 +471,41 @@ class DeepSeekClient:
 """
         
         messages = [
-            {"role": "system", "content": "你是一名专业的投资决策专家，需要给出明确、可执行的投资建议。"},
+            {"role": "system", "content": "你是一名专业的投资决策专家，需要给出明确、可执行的投资建议。请只输出JSON格式的结果。"},
             {"role": "user", "content": prompt}
         ]
         
         response = self.call_api(messages, temperature=0.3, max_tokens=4000)
+        logger.info(f"最终决策原始响应: {response}")
         
         try:
             # 尝试解析JSON响应
             import re
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            import json
+            
+            # 1. 尝试直接解析
+            try:
+                return json.loads(response)
+            except:
+                pass
+            
+            # 2. 尝试提取 Markdown 代码块中的 JSON
+            json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
             if json_match:
-                decision_json = json.loads(json_match.group())
-                return decision_json
-            else:
-                # 如果无法解析JSON，返回文本响应
-                return {"decision_text": response}
-        except:
+                return json.loads(json_match.group(1))
+                
+            # 3. 尝试提取第一个 { ... } 结构
+            # 寻找最外层的花括号
+            start = response.find('{')
+            end = response.rfind('}')
+            
+            if start != -1 and end != -1 and end > start:
+                json_str = response[start:end+1]
+                return json.loads(json_str)
+            
+            logger.warning("无法解析JSON响应，返回原始内容")
+            return {"decision_text": response}
+            
+        except Exception as e:
+            logger.error(f"解析决策结果失败: {e}")
             return {"decision_text": response}

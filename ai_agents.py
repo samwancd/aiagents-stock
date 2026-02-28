@@ -15,6 +15,10 @@ class StockAnalysisAgents:
         print("🔍 技术分析师正在分析中...")
         time.sleep(1)  # 模拟分析时间
         
+        # 确保indicators不为None
+        if indicators is None:
+            indicators = {}
+        
         analysis = self.deepseek_client.technical_analysis(stock_info, stock_data, indicators)
         
         return {
@@ -31,9 +35,15 @@ class StockAnalysisAgents:
         
         # 如果有季报数据，显示数据来源
         if quarterly_data and quarterly_data.get('data_success'):
-            income_count = quarterly_data.get('income_statement', {}).get('periods', 0) if quarterly_data.get('income_statement') else 0
-            balance_count = quarterly_data.get('balance_sheet', {}).get('periods', 0) if quarterly_data.get('balance_sheet') else 0
-            cash_flow_count = quarterly_data.get('cash_flow', {}).get('periods', 0) if quarterly_data.get('cash_flow') else 0
+            income_stmt = quarterly_data.get('income_statement')
+            income_count = income_stmt.get('periods', 0) if isinstance(income_stmt, dict) else 0
+            
+            balance_sheet = quarterly_data.get('balance_sheet')
+            balance_count = balance_sheet.get('periods', 0) if isinstance(balance_sheet, dict) else 0
+            
+            cash_flow = quarterly_data.get('cash_flow')
+            cash_flow_count = cash_flow.get('periods', 0) if isinstance(cash_flow, dict) else 0
+            
             print(f"   ✓ 已获取季报数据：利润表{income_count}期，资产负债表{balance_count}期，现金流量表{cash_flow_count}期")
         else:
             print("   ⚠ 未获取到季报数据，将基于基本财务数据分析")
@@ -311,7 +321,8 @@ class StockAnalysisAgents:
         
         # 如果有新闻数据，显示数据来源
         if news_data and news_data.get('data_success'):
-            news_count = news_data.get('news_data', {}).get('count', 0) if news_data.get('news_data') else 0
+            news_info = news_data.get('news_data')
+            news_count = news_info.get('count', 0) if isinstance(news_info, dict) else 0
             source = news_data.get('source', 'unknown')
             print(f"   ✓ 已从 {source} 获取 {news_count} 条新闻")
         else:

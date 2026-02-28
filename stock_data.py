@@ -23,6 +23,9 @@ class StockDataFetcher:
         try:
             # 处理中国A股
             if self._is_chinese_stock(symbol):
+                # 如果带后缀，去掉后缀
+                if len(symbol) == 9 and '.' in symbol:
+                     symbol = symbol.split('.')[0]
                 return self._get_chinese_stock_info(symbol)
             # 处理港股
             elif self._is_hk_stock(symbol):
@@ -37,6 +40,9 @@ class StockDataFetcher:
         """获取股票历史数据"""
         try:
             if self._is_chinese_stock(symbol):
+                # 如果带后缀，去掉后缀
+                if len(symbol) == 9 and '.' in symbol:
+                     symbol = symbol.split('.')[0]
                 return self._get_chinese_stock_data(symbol, period)
             elif self._is_hk_stock(symbol):
                 return self._get_hk_stock_data(symbol, period)
@@ -48,7 +54,14 @@ class StockDataFetcher:
     def _is_chinese_stock(self, symbol):
         """判断是否为中国A股"""
         # 简单判断：包含数字且长度为6位的认为是中国A股
-        return symbol.isdigit() and len(symbol) == 6
+        if symbol.isdigit() and len(symbol) == 6:
+            return True
+        # 支持带后缀的格式：000001.SZ, 600519.SH
+        if len(symbol) == 9 and (symbol.endswith('.SZ') or symbol.endswith('.SH') or symbol.endswith('.sz') or symbol.endswith('.sh')):
+             # 检查去掉后缀后是否为6位数字
+             code = symbol[:-3]
+             return code.isdigit() and len(code) == 6
+        return False
     
     def _is_hk_stock(self, symbol):
         """判断是否为港股"""
@@ -621,6 +634,9 @@ class StockDataFetcher:
     
     def _get_chinese_financial_data(self, symbol):
         """获取中国股票财务数据"""
+        # 处理股票代码，去除后缀（如 .SZ, .SH），akshare 财务接口只接受纯数字代码
+        clean_symbol = symbol.split('.')[0] if '.' in symbol else symbol
+        
         financial_data = {
             "symbol": symbol,
             "balance_sheet": None,  # 资产负债表
@@ -633,31 +649,46 @@ class StockDataFetcher:
         try:
             # 1. 获取资产负债表
             try:
-                balance_sheet = ak.stock_financial_abstract_ths(symbol=symbol, indicator="资产负债表")
+                balance_sheet = ak.stock_financial_abstract_ths(symbol=clean_symbol, indicator="资产负债表")
                 if balance_sheet is not None and not balance_sheet.empty:
                     financial_data["balance_sheet"] = balance_sheet.head(8).to_dict('records')
+            except AttributeError as e:
+                if "'NoneType' object has no attribute 'string'" in str(e):
+                    print(f"获取资产负债表失败: 数据源返回空数据，可能是股票代码 {symbol} 不存在或不支持 (akshare/THS error)")
+                else:
+                    print(f"获取资产负债表失败 (AttributeError): {e}")
             except Exception as e:
                 print(f"获取资产负债表失败: {e}")
             
             # 2. 获取利润表
             try:
-                income_statement = ak.stock_financial_abstract_ths(symbol=symbol, indicator="利润表")
+                income_statement = ak.stock_financial_abstract_ths(symbol=clean_symbol, indicator="利润表")
                 if income_statement is not None and not income_statement.empty:
                     financial_data["income_statement"] = income_statement.head(8).to_dict('records')
+            except AttributeError as e:
+                if "'NoneType' object has no attribute 'string'" in str(e):
+                    print(f"获取利润表失败: 数据源返回空数据，可能是股票代码 {symbol} 不存在或不支持 (akshare/THS error)")
+                else:
+                    print(f"获取利润表失败 (AttributeError): {e}")
             except Exception as e:
                 print(f"获取利润表失败: {e}")
             
             # 3. 获取现金流量表
             try:
-                cash_flow = ak.stock_financial_abstract_ths(symbol=symbol, indicator="现金流量表")
+                cash_flow = ak.stock_financial_abstract_ths(symbol=clean_symbol, indicator="现金流量表")
                 if cash_flow is not None and not cash_flow.empty:
                     financial_data["cash_flow"] = cash_flow.head(8).to_dict('records')
+            except AttributeError as e:
+                if "'NoneType' object has no attribute 'string'" in str(e):
+                    print(f"获取现金流量表失败: 数据源返回空数据，可能是股票代码 {symbol} 不存在或不支持 (akshare/THS error)")
+                else:
+                    print(f"获取现金流量表失败 (AttributeError): {e}")
             except Exception as e:
                 print(f"获取现金流量表失败: {e}")
             
             # 4. 获取主要财务指标
             try:
-                financial_abstract = ak.stock_financial_abstract(symbol=symbol)
+                financial_abstract = ak.stock_financial_abstract(symbol=clean_symbol)
                 if financial_abstract is not None and not financial_abstract.empty:
                     # 提取关键财务指标
                     key_indicators = [

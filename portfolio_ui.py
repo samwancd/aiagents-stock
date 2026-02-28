@@ -765,21 +765,42 @@ def display_history_record(record: Dict):
         with col1:
             st.markdown("**价格信息**")
             if current_price:
-                st.write(f"当时价格: ¥{current_price:.2f}")
+                try:
+                    price_val = float(current_price)
+                    st.write(f"当时价格: ¥{price_val:.2f}")
+                except (ValueError, TypeError):
+                    st.write(f"当时价格: {current_price}")
             if target_price:
-                st.write(f"目标价: ¥{target_price:.2f}")
+                try:
+                    target_val = float(target_price)
+                    st.write(f"目标价: ¥{target_val:.2f}")
+                except (ValueError, TypeError):
+                    st.write(f"目标价: {target_price}")
         
         with col2:
             st.markdown("**进场区间**")
             if entry_min and entry_max:
-                st.write(f"¥{entry_min:.2f} ~ ¥{entry_max:.2f}")
+                try:
+                    min_val = float(entry_min)
+                    max_val = float(entry_max)
+                    st.write(f"¥{min_val:.2f} ~ ¥{max_val:.2f}")
+                except (ValueError, TypeError):
+                    st.write(f"{entry_min} ~ {entry_max}")
         
         with col3:
             st.markdown("**风控位置**")
             if take_profit:
-                st.write(f"止盈: ¥{take_profit:.2f}")
+                try:
+                    tp_val = float(take_profit)
+                    st.write(f"止盈: ¥{tp_val:.2f}")
+                except (ValueError, TypeError):
+                    st.write(f"止盈: {take_profit}")
             if stop_loss:
-                st.write(f"止损: ¥{stop_loss:.2f}")
+                try:
+                    sl_val = float(stop_loss)
+                    st.write(f"止损: ¥{sl_val:.2f}")
+                except (ValueError, TypeError):
+                    st.write(f"止损: {stop_loss}")
         
         if summary:
             st.markdown("**分析摘要**")
