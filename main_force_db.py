@@ -5,7 +5,10 @@ from datetime import datetime
 import os
 import io
 
-DB_PATH = 'main_force_history.db'
+DB_PATH = os.path.join('data', 'main_force_history.db')
+
+# 确保存储目录存在
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 def init_db():
     """初始化数据库"""
