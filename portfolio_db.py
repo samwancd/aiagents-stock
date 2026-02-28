@@ -10,7 +10,7 @@ from typing import List, Dict, Optional, Tuple
 import os
 
 # 数据库文件路径
-DB_PATH = "portfolio_stocks.db"
+DB_PATH = "data/portfolio_stocks.db"
 
 
 class PortfolioDB:
@@ -24,6 +24,12 @@ class PortfolioDB:
             db_path: 数据库文件路径
         """
         self.db_path = db_path
+        
+        # 确保数据库所在目录存在
+        db_dir = os.path.dirname(self.db_path)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+            
         self._init_database()
     
     def _get_connection(self) -> sqlite3.Connection:

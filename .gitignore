@@ -10,3 +10,7 @@
 /.cursor
 /openspec
 TradEnv/
+
+# Database files
+*.db
+data/
