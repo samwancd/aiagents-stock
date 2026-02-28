@@ -12,6 +12,7 @@ from low_price_bull_strategy import LowPriceBullStrategy
 from notification_service import notification_service
 from low_price_bull_monitor import low_price_bull_monitor
 from low_price_bull_service import low_price_bull_service
+from low_price_bull_db import save_analysis, get_history_list, get_analysis_result, delete_analysis_record
 
 
 def display_low_price_bull():
@@ -39,6 +40,38 @@ def display_low_price_bull():
         if st.button("📊 策略监控", type="primary", width='content'):
             st.session_state.show_low_price_monitor = True
             st.rerun()
+    
+    st.markdown("---")
+    
+    # 显示低价擒牛历史记录（新功能）
+    with st.expander("📚 低价擒牛历史记录", expanded=False):
+        history_list = get_history_list()
+        if not history_list:
+            st.info("暂无历史记录")
+        else:
+            for record in history_list:
+                col_rec1, col_rec2, col_rec3 = st.columns([3, 1, 1])
+                with col_rec1:
+                    st.write(f"📅 {record['timestamp']}")
+                    if 'result' in record and 'total_stocks' in record['result']:
+                         st.caption(f"筛选数量: {record['result']['total_stocks']} 只")
+                with col_rec2:
+                    if st.button("查看", key=f"view_bull_{record['id']}"):
+                        stocks_df, _, _ = get_analysis_result(record['id'])
+                        if stocks_df is not None:
+                            st.session_state.low_price_bull_stocks = stocks_df
+                            # 重建selector对象用于显示（虽然可能不需要完整状态）
+                            st.session_state.low_price_bull_selector = LowPriceBullSelector()
+                            st.rerun()
+                        else:
+                            st.error("加载记录失败")
+                with col_rec3:
+                    if st.button("删除", key=f"del_bull_{record['id']}"):
+                        if delete_analysis_record(record['id']):
+                            st.success("删除成功")
+                            st.rerun()
+                        else:
+                            st.error("删除失败")
     
     st.markdown("---")
     
@@ -99,6 +132,9 @@ def display_low_price_bull():
                 # 保存结果
                 st.session_state.low_price_bull_stocks = stocks_df
                 st.session_state.low_price_bull_selector = selector
+                
+                # 保存到数据库
+                save_analysis(stocks_df, top_n)
                 
                 st.success(f"✅ {message}")
                 
