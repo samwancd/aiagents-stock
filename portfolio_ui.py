@@ -103,7 +103,7 @@ def display_stock_card(stock: Dict):
         
         with col2:
             if cost_price and quantity:
-                st.write(f"成本: ¥{cost_price:.2f}")
+                st.write(f"成本: ¥{cost_price:.3f}")
                 st.caption(f"数量: {quantity}股")
             else:
                 st.caption("未设置持仓")
@@ -138,7 +138,8 @@ def display_stock_card(stock: Dict):
                         "成本价", 
                         value=cost_price if cost_price else 0.0, 
                         min_value=0.0, 
-                        step=0.01
+                        step=0.001,
+                        format="%.3f"
                     )
                     new_quantity = st.number_input(
                         "持仓数量", 
@@ -196,7 +197,8 @@ def display_add_stock_form():
             cost_price = st.number_input(
                 "成本价", 
                 min_value=0.0, 
-                step=0.01,
+                step=0.001,
+                format="%.3f",
                 help="可选，用于计算收益"
             )
             quantity = st.number_input(
