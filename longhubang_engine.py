@@ -328,6 +328,18 @@ class LonghubangEngine:
             报告详情
         """
         return self.database.get_analysis_report(report_id)
+        
+    def delete_report(self, report_id):
+        """
+        删除分析报告
+        
+        Args:
+            report_id: 报告ID
+            
+        Returns:
+            bool: 是否删除成功
+        """
+        return self.database.delete_analysis_report(report_id)
     
     def get_statistics(self):
         """
