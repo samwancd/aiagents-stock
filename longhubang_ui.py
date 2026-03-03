@@ -29,65 +29,58 @@ def display_longhubang():
     st.markdown("---")
     
     # 功能说明
-    col_expander, col_delete = st.columns([0.85, 0.15])
-    with col_expander:
-        with st.expander("💡 智瞰龙虎系统介绍", expanded=st.session_state.get(f"confirm_delete_{report_id}", False)):
-            st.markdown("""
-            ### 🌟 系统特色
-        
-            **智瞰龙虎**是基于多AI智能体的龙虎榜深度分析系统，通过5位专业分析师的协同工作，
-            为您挖掘次日大概率上涨的潜力股票。
-        
-            ### 🤖 AI分析师团队
-        
-            1. **🎯 游资行为分析师**
-               - 识别活跃游资及其操作风格
-               - 分析游资席位的进出特征
-               - 研判游资对个股的态度
-        
-            2. **📈 个股潜力分析师**
-               - 从龙虎榜数据挖掘潜力股
-               - 识别次日大概率上涨的股票
-               - 分析资金动向和技术形态
-        
-            3. **🔥 题材追踪分析师**
-               - 识别当前热点题材和概念
-               - 分析题材的炒作周期
-               - 预判题材的持续性
-        
-            4. **⚠️ 风险控制专家**
-               - 识别高风险股票和陷阱
-               - 分析游资出货信号
-               - 提供风险管理建议
-        
-            5. **👔 首席策略师**
-               - 综合所有分析师意见
-               - 给出最终推荐股票清单
-               - 提供具体操作策略
-        
-            ### 📊 数据来源
-        
-            数据来自**StockAPI龙虎榜接口**，包括：
-            - 游资上榜交割单历史数据
-            - 股票买卖金额和净流入
-            - 热门概念和题材
-            - 更新时间：交易日下午5点40
-        
-            ### 🎯 核心功能
-        
-            - ✅ **潜力股挖掘** - AI识别次日大概率上涨股票
-            - ✅ **游资追踪** - 跟踪活跃游资的操作
-            - ✅ **题材识别** - 发现热点题材和龙头股
-            - ✅ **风险提示** - 识别高风险股票和陷阱
-            - ✅ **历史记录** - 存储所有龙虎榜数据
-            - ✅ **PDF报告** - 生成专业分析报告
-            """)
+    with st.expander("💡 智瞰龙虎系统介绍", expanded=False):
+        st.markdown("""
+        ### 🌟 系统特色
     
-    with col_delete:
-        # Spacer not needed as expander header has height
-        if st.button('馃棏锔?, key=f'del_top_{report_id}', help='鍒犻櫎姝ゆ姤鍛?):
-            st.session_state[f'confirm_delete_{report_id}'] = True
-            st.rerun()
+        **智瞰龙虎**是基于多AI智能体的龙虎榜深度分析系统，通过5位专业分析师的协同工作，
+        为您挖掘次日大概率上涨的潜力股票。
+    
+        ### 🤖 AI分析师团队
+    
+        1. **🎯 游资行为分析师**
+           - 识别活跃游资及其操作风格
+           - 分析游资席位的进出特征
+           - 研判游资对个股的态度
+    
+        2. **📈 个股潜力分析师**
+           - 从龙虎榜数据挖掘潜力股
+           - 识别次日大概率上涨的股票
+           - 分析资金动向和技术形态
+    
+        3. **🔥 题材追踪分析师**
+           - 识别当前热点题材和概念
+           - 分析题材的炒作周期
+           - 预判题材的持续性
+    
+        4. **⚠️ 风险控制专家**
+           - 识别高风险股票和陷阱
+           - 分析游资出货信号
+           - 提供风险管理建议
+    
+        5. **👔 首席策略师**
+           - 综合所有分析师意见
+           - 给出最终推荐股票清单
+           - 提供具体操作策略
+    
+        ### 📊 数据来源
+    
+        数据来自**StockAPI龙虎榜接口**，包括：
+        - 游资上榜交割单历史数据
+        - 股票买卖金额和净流入
+        - 热门概念和题材
+        - 更新时间：交易日下午5点40
+    
+        ### 🎯 核心功能
+    
+        - ✅ **潜力股挖掘** - AI识别次日大概率上涨股票
+        - ✅ **游资追踪** - 跟踪活跃游资的操作
+        - ✅ **题材识别** - 发现热点题材和龙头股
+        - ✅ **风险提示** - 识别高风险股票和陷阱
+        - ✅ **历史记录** - 存储所有龙虎榜数据
+        - ✅ **PDF报告** - 生成专业分析报告
+        """)
+    
     st.markdown("---")
     
     # 创建标签页
@@ -294,52 +287,45 @@ def display_scoring_ranking(result):
         return
     
     # 评分说明
-    col_expander, col_delete = st.columns([0.85, 0.15])
-    with col_expander:
-        with st.expander("📖 评分维度说明", expanded=st.session_state.get(f"confirm_delete_{report_id}", False)):
-            st.markdown("""
-            ### 📊 AI智能评分体系 (总分100分)
-        
-            #### 1️⃣ 买入资金含金量 (0-30分)
-            - **顶级游资**（赵老哥、章盟主、92科比等）：每个 +10分
-            - **知名游资**（深股通、中信证券等）：每个 +5分
-            - **普通游资**：每个 +1.5分
-        
-            #### 2️⃣ 净买入额评分 (0-25分)
-            - 净流入 < 1000万：0-10分
-            - 净流入 1000-5000万：10-18分
-            - 净流入 5000万-1亿：18-22分
-            - 净流入 > 1亿：22-25分
-        
-            #### 3️⃣ 卖出压力评分 (0-20分)
-            - 卖出比例 0-10%：20分 ✨（压力极小）
-            - 卖出比例 10-30%：15-20分（压力较小）
-            - 卖出比例 30-50%：10-15分（压力中等）
-            - 卖出比例 50-80%：5-10分（压力较大）
-            - 卖出比例 > 80%：0-5分（压力极大）
-        
-            #### 4️⃣ 机构共振评分 (0-15分)
-            - **机构+游资共振**：15分 ⭐（最强信号）
-            - 仅机构买入：8-12分
-            - 仅游资买入：5-10分
-        
-            #### 5️⃣ 其他加分项 (0-10分)
-            - **主力集中度**：席位越少越集中 (+1-3分)
-            - **热门概念**：AI、新能源、芯片等 (+0-3分)
-            - **连续上榜**：连续多日上榜 (+0-2分)
-            - **买卖比例优秀**：买入远大于卖出 (+0-2分)
-        
-            ---
-        
-            💡 **评分越高，表示该股票受到资金青睐程度越高！**  
-            ⚠️ **但仍需结合市场环境、技术面等因素综合判断！**
-            """)
+    with st.expander("📖 评分维度说明", expanded=False):
+        st.markdown("""
+        ### 📊 AI智能评分体系 (总分100分)
     
-    with col_delete:
-        # Spacer not needed as expander header has height
-        if st.button('馃棏锔?, key=f'del_top_{report_id}', help='鍒犻櫎姝ゆ姤鍛?):
-            st.session_state[f'confirm_delete_{report_id}'] = True
-            st.rerun()
+        #### 1️⃣ 买入资金含金量 (0-30分)
+        - **顶级游资**（赵老哥、章盟主、92科比等）：每个 +10分
+        - **知名游资**（深股通、中信证券等）：每个 +5分
+        - **普通游资**：每个 +1.5分
+    
+        #### 2️⃣ 净买入额评分 (0-25分)
+        - 净流入 < 1000万：0-10分
+        - 净流入 1000-5000万：10-18分
+        - 净流入 5000万-1亿：18-22分
+        - 净流入 > 1亿：22-25分
+    
+        #### 3️⃣ 卖出压力评分 (0-20分)
+        - 卖出比例 0-10%：20分 ✨（压力极小）
+        - 卖出比例 10-30%：15-20分（压力较小）
+        - 卖出比例 30-50%：10-15分（压力中等）
+        - 卖出比例 50-80%：5-10分（压力较大）
+        - 卖出比例 > 80%：0-5分（压力极大）
+    
+        #### 4️⃣ 机构共振评分 (0-15分)
+        - **机构+游资共振**：15分 ⭐（最强信号）
+        - 仅机构买入：8-12分
+        - 仅游资买入：5-10分
+    
+        #### 5️⃣ 其他加分项 (0-10分)
+        - **主力集中度**：席位越少越集中 (+1-3分)
+        - **热门概念**：AI、新能源、芯片等 (+0-3分)
+        - **连续上榜**：连续多日上榜 (+0-2分)
+        - **买卖比例优秀**：买入远大于卖出 (+0-2分)
+    
+        ---
+    
+        💡 **评分越高，表示该股票受到资金青睐程度越高！**  
+        ⚠️ **但仍需结合市场环境、技术面等因素综合判断！**
+        """)
+    
     st.markdown("---")
     
     # 显示TOP10评分表格
@@ -576,25 +562,16 @@ def display_recommended_stocks(result):
     st.markdown("### 📝 详细推荐理由")
     
     for stock in recommended[:5]:  # 只显示前5只
-        col_expander, col_delete = st.columns([0.85, 0.15])
-        with col_expander:
-            with st.expander(f"**{stock.get('rank', '-')}. {stock.get('name', '-')} ({stock.get('code', '-')})**"):
-                col1, col2 = st.columns([2, 1])
-            
-                with col1:
-                    st.markdown(f"**推荐理由:** {stock.get('reason', '暂无')}")
-                    st.markdown(f"**净流入:** {stock.get('net_inflow', 0):,.2f} 元")
-            
-                with col2:
-                    st.markdown(f"**确定性:** {stock.get('confidence', '-')}")
-                    st.markdown(f"**持有周期:** {stock.get('hold_period', '-')}")
-
-
-        with col_delete:
-            # Spacer not needed as expander header has height
-            if st.button('馃棏锔?, key=f'del_top_{report_id}', help='鍒犻櫎姝ゆ姤鍛?):
-                st.session_state[f'confirm_delete_{report_id}'] = True
-                st.rerun()
+        with st.expander(f"**{stock.get('rank', '-')}. {stock.get('name', '-')} ({stock.get('code', '-')})**"):
+            col1, col2 = st.columns([2, 1])
+        
+            with col1:
+                st.markdown(f"**推荐理由:** {stock.get('reason', '暂无')}")
+                st.markdown(f"**净流入:** {stock.get('net_inflow', 0):,.2f} 元")
+        
+            with col2:
+                st.markdown(f"**确定性:** {stock.get('confidence', '-')}")
+                st.markdown(f"**持有周期:** {stock.get('hold_period', '-')}")
 def display_agents_reports(result):
     """显示AI分析师报告"""
     
@@ -618,23 +595,12 @@ def display_agents_reports(result):
     for agent_key, info in agent_info.items():
         agent_data = agents_analysis.get(agent_key, {})
         if agent_data:
-            col_expander, col_delete = st.columns([0.85, 0.15])
-            with col_expander:
-                with st.expander(f"{info['icon']} {info['title']}", expanded=(agent_key == 'chief')):
-                    analysis = agent_data.get('analysis', '暂无分析')
-                    st.markdown(analysis)
-                
-                    st.markdown(f"*{agent_data.get('agent_role', '')}*")
-                    st.caption(f"分析时间: {agent_data.get('timestamp', 'N/A')}")
-
-
-            with col_delete:
-                # Spacer to align with expander header
-                st.write("")
-                st.write("")
-                if st.button('🗑️', key=f'del_top_{report_id}', help='删除此报告'):
-                    st.session_state[f'confirm_delete_{report_id}'] = True
-                    st.rerun()
+            with st.expander(f"{info['icon']} {info['title']}", expanded=(agent_key == 'chief')):
+                analysis = agent_data.get('analysis', '暂无分析')
+                st.markdown(analysis)
+            
+                st.markdown(f"*{agent_data.get('agent_role', '')}*")
+                st.caption(f"分析时间: {agent_data.get('timestamp', 'N/A')}")
 def display_data_details(result):
     """显示数据详情"""
     
@@ -1266,12 +1232,6 @@ def display_history_tab():
                                 if f"confirm_delete_{report_id}" in st.session_state:
                                     del st.session_state[f"confirm_delete_{report_id}"]
                                 st.rerun()
-        
-            with col_delete:
-                # Spacer not needed as expander header has height
-                if st.button('馃棏锔?, key=f'del_top_{report_id}', help='鍒犻櫎姝ゆ姤鍛?):
-                    st.session_state[f'confirm_delete_{report_id}'] = True
-                    st.rerun()
     except Exception as e:
         st.error(f"❌ 加载历史报告失败: {str(e)}")
         import traceback
@@ -1678,19 +1638,12 @@ def display_longhubang_batch_results(batch_results: dict):
     # 失败的股票
     failed_results = [r for r in results if not r.get("result", {}).get("success")]
     if failed_results:
-        col_expander, col_delete = st.columns([0.85, 0.15])
-        with col_expander:
-            with st.expander(f"❌ 失败股票 ({len(failed_results)}只)", expanded=st.session_state.get(f"confirm_delete_{report_id}", False)):
-                for item in failed_results:
-                    code = item.get("code", "")
-                    error = item.get("result", {}).get("error", "未知错误")
-                    st.error(f"**{code}**: {error}")
-    
-        with col_delete:
-            # Spacer not needed as expander header has height
-            if st.button('馃棏锔?, key=f'del_top_{report_id}', help='鍒犻櫎姝ゆ姤鍛?):
-                st.session_state[f'confirm_delete_{report_id}'] = True
-                st.rerun()
+        with st.expander(f"❌ 失败股票 ({len(failed_results)}只)", expanded=False):
+            for item in failed_results:
+                code = item.get("code", "")
+                error = item.get("result", {}).get("error", "未知错误")
+                st.error(f"**{code}**: {error}")
+
     # 成功的股票
     success_results = [r for r in results if r.get("result", {}).get("success")]
     
@@ -1726,7 +1679,7 @@ def display_longhubang_batch_results(batch_results: dict):
         
         col_expander, col_delete = st.columns([0.85, 0.15])
         with col_expander:
-            with st.expander(f"{rating_color} {code} {stock_info.get('name', '')} - {rating} (信心度: {confidence})", expanded=st.session_state.get(f"confirm_delete_{report_id}", False)):
+            with st.expander(f"{rating_color} {code} {stock_info.get('name', '')} - {rating} (信心度: {confidence})"):
                 col1, col2, col3 = st.columns(3)
             
                 with col1:
@@ -1751,13 +1704,6 @@ def display_longhubang_batch_results(batch_results: dict):
                 # 添加到监测按钮
                 if st.button(f"➕ 加入监测", key=f"add_monitor_{code}"):
                     add_to_monitor_from_longhubang(code, stock_info.get('name', ''), final_decision)
-
-
-        with col_delete:
-            # Spacer not needed as expander header has height
-            if st.button('馃棏锔?, key=f'del_top_{report_id}', help='鍒犻櫎姝ゆ姤鍛?):
-                st.session_state[f'confirm_delete_{report_id}'] = True
-                st.rerun()
 def add_to_monitor_from_longhubang(code: str, name: str, final_decision: dict):
     """从龙虎榜分析结果添加到监测列表"""
     try:

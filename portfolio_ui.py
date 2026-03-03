@@ -47,6 +47,45 @@ def display_portfolio_stocks():
     
     st.markdown("### 📝 持仓股票管理")
     
+    # 注入紧凑布局样式
+    st.markdown("""
+    <style>
+    /* 针对Tab内的垂直块减少间距 */
+    .stTabs [data-testid="stVerticalBlock"] {
+        gap: 0.2rem !important;
+    }
+    
+    /* 针对Tab内的水平块减少内边距 */
+    .stTabs [data-testid="stHorizontalBlock"] {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    
+    /* 减少列的内边距 */
+    .stTabs [data-testid="column"] {
+        padding-top: 0rem !important;
+        padding-bottom: 0rem !important;
+    }
+    
+    /* 减少文本段落的底部边距 */
+    .stTabs p {
+        margin-bottom: 0.1rem !important;
+    }
+    
+    /* 自定义紧凑分隔线 */
+    hr.compact-hr {
+        margin-top: 0.1rem !important;
+        margin-bottom: 0.1rem !important;
+        border-top: 1px solid #f0f0f0;
+    }
+    
+    /* 针对特定容器微调 */
+    .stock-card-container {
+        padding: 0.2rem 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
     # 添加新股票表单
     with st.expander("➕ 添加持仓股票", expanded=False):
         display_add_stock_form()
@@ -93,86 +132,87 @@ def display_stock_card(stock: Dict):
     created_at = stock.get("created_at", "")
     
     # 创建卡片
-    with st.container():
-        col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
-        
-        with col1:
-            st.markdown(f"**{code}** {name}")
-            if note:
-                st.caption(f"备注: {note}")
-        
-        with col2:
-            if cost_price and quantity:
-                st.write(f"成本: ¥{cost_price:.3f}")
-                st.caption(f"数量: {quantity}股")
-            else:
-                st.caption("未设置持仓")
-        
-        with col3:
-            if auto_monitor:
-                st.success("🔔 自动监测")
-            else:
-                st.info("🔕 不监测")
-        
-        with col4:
-            col_edit, col_del = st.columns(2)
-            with col_edit:
-                if st.button("✏️", key=f"edit_{code}", help="编辑"):
-                    st.session_state[f"editing_{code}"] = True
-                    st.rerun()
-            with col_del:
-                if st.button("🗑️", key=f"del_{code}", help="删除"):
-                    portfolio_manager.delete_stock(stock_id)  # 使用stock_id而不是code
-                    st.success(f"已删除 {code}")
+    # 直接使用列布局，避免多余容器嵌套带来的间距
+    col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
+    
+    with col1:
+        st.markdown(f"**{code}** {name}")
+        if note:
+            st.caption(f"备注: {note}")
+    
+    with col2:
+        if cost_price and quantity:
+            st.write(f"成本: ¥{cost_price:.3f}")
+            st.caption(f"数量: {quantity}股")
+        else:
+            st.caption("未设置持仓")
+    
+    with col3:
+        if auto_monitor:
+            st.success("🔔 自动监测")
+        else:
+            st.info("🔕 不监测")
+    
+    with col4:
+        col_edit, col_del = st.columns(2)
+        with col_edit:
+            if st.button("✏️", key=f"edit_{code}", help="编辑"):
+                st.session_state[f"editing_{code}"] = True
+                st.rerun()
+        with col_del:
+            if st.button("🗑️", key=f"del_{code}", help="删除"):
+                portfolio_manager.delete_stock(stock_id)  # 使用stock_id而不是code
+                st.success(f"已删除 {code}")
+                time.sleep(0.5)
+                st.rerun()
+
+    # 使用自定义紧凑分隔线
+    st.markdown('<hr class="compact-hr">', unsafe_allow_html=True)
+    
+    # 编辑表单（如果处于编辑状态）
+    if st.session_state.get(f"editing_{code}"):
+        with st.form(key=f"edit_form_{code}"):
+            st.markdown(f"#### 编辑 {code}")
+            
+            col_a, col_b = st.columns(2)
+            with col_a:
+                new_cost = st.number_input(
+                    "成本价", 
+                    value=cost_price if cost_price else 0.0, 
+                    min_value=0.0, 
+                    step=0.001,
+                    format="%.3f"
+                )
+                new_quantity = st.number_input(
+                    "持仓数量", 
+                    value=quantity if quantity else 0, 
+                    min_value=0, 
+                    step=100
+                )
+            
+            with col_b:
+                new_note = st.text_area("备注", value=note, height=80)
+                new_auto_monitor = st.checkbox("自动同步到监测", value=auto_monitor)
+            
+            col_submit, col_cancel = st.columns(2)
+            with col_submit:
+                if st.form_submit_button("保存", type="primary"):
+                    portfolio_manager.update_stock(
+                        stock_id,  # 使用stock_id而不是code
+                        cost_price=new_cost if new_cost > 0 else None,
+                        quantity=new_quantity if new_quantity > 0 else None,
+                        note=new_note,
+                        auto_monitor=new_auto_monitor
+                    )
+                    del st.session_state[f"editing_{code}"]
+                    st.success("更新成功！")
                     time.sleep(0.5)
                     st.rerun()
-        
-        # 编辑表单（如果处于编辑状态）
-        if st.session_state.get(f"editing_{code}"):
-            with st.form(key=f"edit_form_{code}"):
-                st.markdown(f"#### 编辑 {code}")
-                
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    new_cost = st.number_input(
-                        "成本价", 
-                        value=cost_price if cost_price else 0.0, 
-                        min_value=0.0, 
-                        step=0.001,
-                        format="%.3f"
-                    )
-                    new_quantity = st.number_input(
-                        "持仓数量", 
-                        value=quantity if quantity else 0, 
-                        min_value=0, 
-                        step=100
-                    )
-                
-                with col_b:
-                    new_note = st.text_area("备注", value=note, height=80)
-                    new_auto_monitor = st.checkbox("自动同步到监测", value=auto_monitor)
-                
-                col_submit, col_cancel = st.columns(2)
-                with col_submit:
-                    if st.form_submit_button("保存", type="primary"):
-                        portfolio_manager.update_stock(
-                            stock_id,  # 使用stock_id而不是code
-                            cost_price=new_cost if new_cost > 0 else None,
-                            quantity=new_quantity if new_quantity > 0 else None,
-                            note=new_note,
-                            auto_monitor=new_auto_monitor
-                        )
-                        del st.session_state[f"editing_{code}"]
-                        st.success("更新成功！")
-                        time.sleep(0.5)
-                        st.rerun()
-                
-                with col_cancel:
-                    if st.form_submit_button("取消"):
-                        del st.session_state[f"editing_{code}"]
-                        st.rerun()
-        
-        st.markdown("---")
+            
+            with col_cancel:
+                if st.form_submit_button("取消"):
+                    del st.session_state[f"editing_{code}"]
+                    st.rerun()
 
 
 def display_add_stock_form():
